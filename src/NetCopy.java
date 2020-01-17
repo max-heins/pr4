@@ -56,7 +56,7 @@ public class NetCopy {
         System.out.println(filename);
 
         String line = "";
-        File targetFile = new File(".\\src\\tast.txt");
+        File targetFile = new File(filename);
         BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile, true));
         while ((line = reader.readLine()) != null) {
             writer.append((line + "\n"));
