@@ -1,7 +1,15 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLOutput;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.DoubleToIntFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Uebertraegt ein File zwischen zwei Hosts.
@@ -27,8 +35,6 @@ public class NetCopy {
      * @throws IOException          wenn beim Zugriff aufs Filesystem oder aufs Netzwerk etwas schief geht.
      */
     public static void main(String... args) throws IOException {
-        System.out.println("Anfang");
-        System.out.println(args[0]);
         if(!send(args[0])) {
             System.out.println("Empfang");
             receive(args[0]);
@@ -41,16 +47,22 @@ public class NetCopy {
      * @throws IOException wenn beim Empfangen oder Schreiben des Files etwas schief geht.
      */
     public static void receive(String hostname) throws IOException {
-        //TODO
-        InputStream initi = new FileInputStream(new File(hostname));
-        Socket socket = new Socket(hostname, PORT);
-        InputStream i = socket.getInputStream();
-        byte[] buffer = new byte[i.available()];
-        i.read(buffer);
 
-        File targetFile = new File("./");
-        OutputStream o = new FileOutputStream(targetFile);
-        o.write(buffer);
+        Socket socket = new Socket(hostname, PORT);
+        InputStream ins = socket.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(ins));
+
+        String filename = reader.readLine();
+        System.out.println(filename);
+
+        String line = "";
+        File targetFile = new File(".\\src\\tast.txt");
+        BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile, true));
+        while ((line = reader.readLine()) != null) {
+            writer.append((line + "\n"));
+        }
+        writer.close();
+
     }
 
     /**
@@ -61,24 +73,33 @@ public class NetCopy {
      * @throws IOException wenn filename existiert, aber beim Lesen oder Senden etwas schief ging.
      */
     public static boolean send(String filename) throws IOException {
-        if(!File.createTempFile(filename, filename.substring(filename.lastIndexOf("."))).exists())
+        try
+        {
+            filename.substring(0, filename.lastIndexOf("."));
+        }
+        catch (StringIndexOutOfBoundsException e)
         {
             return false;
         }
+            if(!File.createTempFile(filename.substring(0, filename.lastIndexOf(".")), filename.substring(filename.lastIndexOf("."))).exists())
+        {
+            return false;
+        }
+
         ServerSocket serverSocket = new ServerSocket(PORT);
         Socket socket = serverSocket.accept();
-        System.out.println("Accepted connection : " + socket);
+        System.out.println("Verbindung hergestellt : " + socket);
+        OutputStream output = socket.getOutputStream();
+        PrintWriter writer = new PrintWriter(output, true);
+        writer.println(filename);
+
+        filename = ".\\src\\" + filename;
         File transferFile = new File (filename);
-        byte [] bytearray  = new byte [(int)transferFile.length()];
-        FileInputStream fin = new FileInputStream(transferFile);
-        BufferedInputStream bin = new BufferedInputStream(fin);
-        bin.read(bytearray,0,bytearray.length);
-        OutputStream out = socket.getOutputStream();
-        System.out.println("Sending Files...");
-        out.write(bytearray,0,bytearray.length);
-        out.flush();
+        String content = Files.readString(Paths.get(filename));
+        writer.println(content);
+
         socket.close();
-        System.out.println("File transfer complete");
-        return false;
+        System.out.println("Ende");
+        return true;
     }
 }
